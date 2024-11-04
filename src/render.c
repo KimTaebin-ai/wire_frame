@@ -64,7 +64,7 @@ int	render(t_data *data, t_img *img)
 	if (data->win_ptr == NULL)
 		return (1);
 	render_background(img, COLOR_BLACK);
-	// rotate_project_scale(data);
+	rotate_project_scale(data);
 	draw_line(data);
 	mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, img->img_ptr, 0, 0);
 	return (0);

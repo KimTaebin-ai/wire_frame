@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/28 21:20:22 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/02 20:38:35 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/04 17:52:28 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@
 # include <fcntl.h>
 # include <get_next_line.h>
 # include <libft.h>
+# include <math.h>
 # include <mlx.h>
 # include <stdlib.h>
 # include <unistd.h>
@@ -112,6 +113,7 @@ void			free_z(t_data *data);
 void			free_color(t_data *data);
 void			free_mlx(t_data *data);
 void			free_data(t_data *data);
+void			copy_coords(t_data *data);
 
 int				render(t_data *data, t_img *img);
 
@@ -120,5 +122,10 @@ void			draw_horiz(t_data *data, t_point *point, t_bres *bres,
 void			draw_vert(t_data *data, t_point *point, t_bres *bres,
 					t_img *img);
 void			img_pixel_put(t_img *img, int x, int y, int color);
+
+void			rotate_project_scale(t_data *data);
+
+void			calculate_scaling_and_offset(t_data *data);
+void			project(t_data *data);
 
 #endif

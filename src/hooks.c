@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/02 16:49:47 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/02 20:28:30 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/04 17:00:02 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,8 +47,14 @@ int	key_hook(int keycode, t_data *data)
 	}
 	if (keycode == 53 || keycode == 65307)
 		close_window(data);
-	// TODO
-	// 회전, 확대 등등 보너스용 함수 필요
+	else if (keycode == 65361)
+		data->rot_angle_y -= 1.0;
+	else if (keycode == 65363)
+		data->rot_angle_y += 1.0;
+	else if (keycode == 65362)
+		data->rot_angle_x -= 1.0;
+	else if (keycode == 65364)
+		data->rot_angle_x += 1.0;
 	render(data, &data->img);
 	return (0);
 }

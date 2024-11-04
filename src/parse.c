@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/02 19:58:18 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/02 20:03:14 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/04 18:09:34 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,7 +88,7 @@ void	parse_fdf_file(t_data *data, const char *file)
 	y = 0;
 	fd = open(file, O_RDONLY);
 	if (fd < 0)
-		error_msg("file is fucked", data);
+		error_msg("error: open() failed\n", data);
 	line = get_next_line(fd);
 	while (line != NULL)
 	{

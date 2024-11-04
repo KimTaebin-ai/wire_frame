@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/28 21:25:27 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/02 20:39:47 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/04 17:53:25 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,8 +27,8 @@ static void	init_data(t_data *data)
 	data->offset_x = 0;
 	data->offset_y = 0;
 	data->scale = 1;
-	data->rot_angle_x = 30.0;
-	data->rot_angle_y = 45.0;
+	data->rot_angle_x = 0.0;
+	data->rot_angle_y = 0.0;
 	data->rot_angle_z = 0;
 }
 
@@ -72,14 +72,16 @@ int	main(int argc, char **argv)
 	init_data(&data);
 	file_load(argc, argv);
 	init_mlx(&data);
-	// get_map(&data, argv[1]);
-	// TODO 맵, 색깔 allocate 필요
-	// allocate_color_z(&data);
-	// parse_fdf_file(&data, argv[1]);
-	// TODO 좌표값 allocate 필요
-	// allocate_coords(&data);
+	get_map(&data, argv[1]);
+	allocate_color_z(&data);
+	parse_fdf_file(&data, argv[1]);
+	allocate_coords(&data);
+	copy_coords(&data);
+	render(&data, &data.img);
 	mlx_key_hook(data.win_ptr, key_hook, &data);
 	mlx_hook(data.win_ptr, 17, 0, handle_x, &data);
 	mlx_loop(data.mlx_ptr);
+	free_data(&data);
+	exit(EXIT_SUCCESS);
 	return (0);
 }
