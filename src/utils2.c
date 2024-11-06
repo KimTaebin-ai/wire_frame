@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/06 19:39:14 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/06 21:12:30 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/06 23:00:06 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,8 +31,8 @@ void	to_upper(unsigned int i, char *c)
 
 void	image_reset(mlx_image_t *image)
 {
-	int	i;
-	int	j;
+	unsigned int	i;
+	unsigned int	j;
 
 	i = 0;
 	while (i < image->height)

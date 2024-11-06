@@ -6,7 +6,7 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/06 19:35:21 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/06 21:13:17 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/06 22:59:25 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,8 @@ static void	bresenham(mlx_image_t *image, t_pixel p1, t_pixel p2)
 	error[0] = abs(p2.x - p1.x) - abs(p2.y - p1.y);
 	while (crrnt.x != p2.x || crrnt.y != p2.y)
 	{
-		if (crrnt.x < image->width && crrnt.y < image->height)
+		if ((unsigned int)crrnt.x < image->width
+			&& (unsigned int)crrnt.y < image->height)
 			mlx_put_pixel(image, crrnt.x, crrnt.y, get_clr(crrnt, p1, p2));
 		error[1] = error[0] * 2;
 		if (error[1] > -abs(p2.y - p1.y))
