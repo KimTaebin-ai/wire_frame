@@ -5,104 +5,123 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/11/02 19:58:18 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/04 18:09:34 by taebkim          ###   ########.fr       */
+/*   Created: 2024/11/06 19:37:49 by taebkim           #+#    #+#             */
+/*   Updated: 2024/11/06 19:55:40 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-static int	parse_hex_color(const char *hex_str)
+static int	clr_parse(int fd, t_map *map, char *arr2)
 {
-	int	color;
-
-	color = 0;
-	if (hex_str[0] == '0' && (hex_str[1] == 'x' || hex_str[1] == 'X'))
-		hex_str += 2;
-	while (*hex_str)
-	{
-		color = (color << 4) | hex_to_int(*hex_str);
-		hex_str++;
-	}
-	return (color);
+	while (*arr2 == '-')
+		arr2++;
+	while (ft_isdigit(*arr2))
+		arr2++;
+	if (*arr2 == ',')
+		arr2++;
+	else
+		return (0xFFFFFFFF);
+	if ((ft_strncmp(arr2, "0X", 2) && ft_strncmp(arr2, "0x", 2)))
+		map_error(fd, map, MAP_ERR);
+	arr2 += 2;
+	ft_striteri(arr2, &to_upper);
+	return ((ft_atoi_base(arr2, "0123456789ABCDEF") << 8) | 0xFF);
 }
 
-static int	parse_color(char *token)
+static void	column_parse(int fd, t_map *map, char **arr, int i)
 {
-	char	**insight;
-	int		color;
+	t_vertex	*point;
+	int			center_x;
+	int			center_y;
+	int			j;
+
+	j = -1;
+	while (++j < map->cols)
+	{
+		if (!ft_isdigit(*arr[j]) && *arr[j] != '-')
+			map_error(fd, map, MAP_ERR);
+		point = &(map->original_points[i][j]);
+		center_x = (map->cols - 1) * map->interval / 2;
+		center_y = (map->rows - 1) * map->interval / 2;
+		point->x = (double)j * (map->interval) - center_x;
+		point->y = (double)i * (map->interval) - center_y;
+		point->z = (double)ft_atoi(arr[j]) * (map->interval);
+		map->max_height = ft_max(map->max_height, point->z);
+		map->min_height = ft_min(map->min_height, point->z);
+		point->mapcolor = clr_parse(fd, map, arr[j]);
+	}
+}
+
+void	map_parse(int fd, t_map *map)
+{
+	char	**arr;
+	char	*line;
+	char	*temp;
 	int		i;
 
-	if (ft_strchr(token, ','))
+	i = -1;
+	while (++i < map->rows)
 	{
-		insight = ft_split(token, ',');
-		if (insight[1])
-			color = parse_hex_color(insight[1]);
-		else
-			color = COLOR_WHITE;
-		i = 0;
-		while (insight[i])
-		{
-			free(insight[i]);
-			i++;
-		}
-		free(insight);
+		temp = get_next_line(fd);
+		if (!temp)
+			map_error(fd, map, MALLOC_ERR);
+		line = ft_strtrim(temp, "\n");
+		free(temp);
+		if (!line)
+			map_error(fd, map, MALLOC_ERR);
+		arr = ft_split(line, ' ');
+		free(line);
+		if (!arr)
+			map_error(fd, map, MALLOC_ERR);
+		column_parse(fd, map, arr, i);
+		arr_free((void **)arr, map->cols);
 	}
-	else
-		color = COLOR_WHITE;
-	return (color);
 }
 
-static void	parse_line(t_data *data, char *line, int y)
+static int	get_columns(int fd, t_map *map, char *line)
 {
-	char	*ptr;
-	char	*token;
-	int		x;
+	char	**arr;
+	char	*temp;
+	int		i;
 
-	x = 0;
-	ptr = line;
-	while (*ptr != '\0' && x < data->map_width)
+	temp = ft_strtrim(line, "\n");
+	free(line);
+	if (!temp)
+		map_error(fd, map, MALLOC_ERR);
+	arr = ft_split(temp, ' ');
+	free(temp);
+	if (!arr)
+		map_error(fd, map, MALLOC_ERR);
+	i = 0;
+	while (arr[i])
 	{
-		while (ft_isspace(*ptr))
-			ptr++;
-		if (*ptr != '\0')
-		{
-			token = ptr;
-			data->map[y][x] = ft_atoi(token);
-			data->colors[y][x] = parse_color(token);
-			x++;
-		}
-		while (*ptr != '\0' && !ft_isspace(*ptr))
-			ptr++;
+		map->max_height = ft_max(map->max_height, ft_atoi(arr[i]));
+		map->min_height = ft_min(map->min_height, ft_atoi(arr[i]));
+		i++;
 	}
-	if (x > data->map_width)
-		data->map_width = x;
+	arr_free((void **)arr, i);
+	return (i);
 }
 
-void	parse_fdf_file(t_data *data, const char *file)
+void	map_size(int fd, t_map *map)
 {
-	int		y;
-	int		fd;
 	char	*line;
 
-	y = 0;
-	fd = open(file, O_RDONLY);
-	if (fd < 0)
-		error_msg("error: open() failed\n", data);
 	line = get_next_line(fd);
-	while (line != NULL)
+	if (!line)
+		map_error(fd, map, MALLOC_ERR);
+	map->cols = get_columns(fd, map, line);
+	if (map->cols == 0)
+		map_error(fd, map, MAP_ERR);
+	map->rows = 1;
+	while (1)
 	{
-		if (y < data->map_height)
-		{
-			parse_line(data, line, y);
-			free(line);
-			line = get_next_line(fd);
-			y++;
-		}
-		else
-			error_msg("error height 1", data);
+		line = get_next_line(fd);
+		if (!line)
+			break ;
+		map->rows++;
+		if (map->cols != get_columns(fd, map, line))
+			map_error(fd, map, MAP_ERR);
 	}
-	if (y != data->map_height)
-		error_msg("error heignt", data);
-	close(fd);
 }

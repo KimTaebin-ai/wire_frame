@@ -5,107 +5,90 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/11/04 17:17:08 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/04 17:49:07 by taebkim          ###   ########.fr       */
+/*   Created: 2024/11/06 19:35:21 by taebkim           #+#    #+#             */
+/*   Updated: 2024/11/06 21:13:17 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-static void	rotate_x(t_data *data)
+static void	bresenham(mlx_image_t *image, t_pixel p1, t_pixel p2)
 {
-	float	y_new;
-	float	z_new;
-	int		i;
-	float	rad_x;
+	int		error[2];
+	t_pixel	crrnt;
 
-	i = 0;
-	rad_x = (data->rot_angle_x) * M_PI / 180.0;
-	while (i < data->map_height * data->map_width)
+	crrnt.x = p1.x;
+	crrnt.y = p1.y;
+	error[0] = abs(p2.x - p1.x) - abs(p2.y - p1.y);
+	while (crrnt.x != p2.x || crrnt.y != p2.y)
 	{
-		y_new = data->coords[i].y * cos(rad_x) - data->coords[i].z * sin(rad_x);
-		z_new = data->coords[i].y * sin(rad_x) + data->coords[i].z * cos(rad_x);
-		data->coords[i].y = y_new;
-		data->coords[i].z = z_new;
-		i++;
+		if (crrnt.x < image->width && crrnt.y < image->height)
+			mlx_put_pixel(image, crrnt.x, crrnt.y, get_clr(crrnt, p1, p2));
+		error[1] = error[0] * 2;
+		if (error[1] > -abs(p2.y - p1.y))
+		{
+			error[0] -= abs(p2.y - p1.y);
+			crrnt.x += (p1.x < p2.x);
+			crrnt.x -= (p2.x < p1.x);
+		}
+		if (error[1] < abs(p2.x - p1.x))
+		{
+			error[0] += abs(p2.x - p1.x);
+			crrnt.y += (p1.y < p2.y);
+			crrnt.y -= (p2.y < p1.y);
+		}
 	}
 }
 
-static void	rotate_y(t_data *data)
+void	map_project(t_map *map, int i, int j)
 {
-	float	x_new;
-	float	z_new;
-	int		i;
-	float	rad_y;
+	t_vertex	*previous;
+	t_pixel		*new;
+	t_coord		coord;
 
-	i = 0;
-	rad_y = (data->rot_angle_y) * M_PI / 180.0;
-	while (i < data->map_height * data->map_width)
+	previous = &(map->original_points[i][j]);
+	new = &(map->projected_points[i][j]);
+	coord.x = previous->x;
+	coord.y = previous->y;
+	coord.z = previous->z * map->height_scale;
+	rot_z_axis(&coord.x, &coord.y, map->rotation_z);
+	set_map_pov(map, previous, new, coord);
+}
+
+static void	draw_line(t_fdf *fdf, int x, int y)
+{
+	if (y == 0 && x == 0)
+		map_project(fdf->map, y, x);
+	if (y + 1 < fdf->map->rows)
 	{
-		x_new = data->coords[i].x * cos(rad_y) + data->coords[i].z * sin(rad_y);
-		z_new = -data->coords[i].x * sin(rad_y) + data->coords[i].z
-			* cos(rad_y);
-		data->coords[i].x = x_new;
-		data->coords[i].z = z_new;
-		i++;
+		map_project(fdf->map, y + 1, x);
+		bresenham(fdf->image, fdf->map->projected_points[y][x],
+			fdf->map->projected_points[y + 1][x]);
+	}
+	if (x + 1 < fdf->map->cols)
+	{
+		if (y == 0)
+			map_project(fdf->map, y, x + 1);
+		bresenham(fdf->image, fdf->map->projected_points[y][x],
+			fdf->map->projected_points[y][x + 1]);
 	}
 }
 
-static void	rotate_z(t_data *data)
+void	draw_image(void *param)
 {
-	float	x_new;
-	float	y_new;
 	int		i;
-	float	rad_z;
+	int		j;
+	t_fdf	*fdf;
 
-	i = 0;
-	rad_z = (data->rot_angle_z) * M_PI / 180.0;
-	while (i < data->map_height * data->map_width)
+	fdf = (t_fdf *)param;
+	image_reset(fdf->image);
+	i = -1;
+	while (++i < fdf->map->rows)
 	{
-		x_new = data->coords[i].x * cos(rad_z) - data->coords[i].y * sin(rad_z);
-		y_new = data->coords[i].x * sin(rad_z) + data->coords[i].y * cos(rad_z);
-		data->coords[i].x = x_new;
-		data->coords[i].y = y_new;
-		i++;
-	}
-}
-
-void	project(t_data *data)
-{
-	float	iso_x;
-	float	iso_y;
-	int		i;
-
-	i = 0;
-	rotate_x(data);
-	rotate_y(data);
-	rotate_z(data);
-	while (i < data->map_height * data->map_width)
-	{
-		iso_x = (data->coords[i].x - data->coords[i].y) * cos((30) * M_PI
-				/ 180.0);
-		iso_y = (data->coords[i].x + data->coords[i].y) * sin((30) * M_PI
-				/ 180.0) - data->coords[i].z;
-		data->coords[i].x = iso_x;
-		data->coords[i].y = iso_y;
-		i++;
-	}
-}
-
-void	rotate_project_scale(t_data *data)
-{
-	int	i;
-
-	i = 0;
-	calculate_scaling_and_offset(data);
-	while (i < data->map_height * data->map_width)
-	{
-		data->coords[i].x = round(data->coords[i].x * data->scale
-				+ data->offset_x);
-		data->coords[i].y = round(data->coords[i].y * data->scale
-				+ data->offset_y);
-		img_pixel_put(&data->img, data->coords[i].x, data->coords[i].y,
-			data->coords[i].color);
-		i++;
+		j = -1;
+		while (++j < fdf->map->cols)
+		{
+			draw_line(fdf, j, i);
+		}
 	}
 }

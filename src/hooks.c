@@ -5,62 +5,104 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/11/02 16:49:47 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/04 17:00:02 by taebkim          ###   ########.fr       */
+/*   Created: 2024/11/06 19:36:15 by taebkim           #+#    #+#             */
+/*   Updated: 2024/11/06 19:36:29 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-static void	close_window(t_data *data)
+void	hook_scroll(double xscale, double yscale, void *param)
 {
-	if (data->win_ptr)
-	{
-		mlx_destroy_window(data->mlx_ptr, data->win_ptr);
-		data->win_ptr = NULL;
-	}
-	if (data->img.img_ptr)
-	{
-		mlx_destroy_image(data->mlx_ptr, data->img.img_ptr);
-		data->img.img_ptr = NULL;
-	}
-	if (data->mlx_ptr)
-	{
-		free(data->mlx_ptr);
-		data->mlx_ptr = NULL;
-	}
-	free_data(data);
-	exit(EXIT_SUCCESS);
+	t_fdf	*fdf;
+
+	(void)xscale;
+	fdf = (t_fdf *)param;
+	if (yscale > 0)
+		fdf->map->zoom *= 1.02;
+	else if (yscale < 0 && fdf->map->zoom * 0.98 > 0)
+		fdf->map->zoom *= 0.98;
+	xscale++;
 }
 
-int	key_hook(int keycode, t_data *data)
+void	hook_events(void *param)
 {
-	int	i;
+	t_fdf	*fdf;
 
-	i = 0;
-	if (!data->init_coords || !data->coords)
-		error_msg("Error: init_coords or coords is NULL", data);
-	while (i < data->map_height * data->map_width)
-	{
-		data->coords[i] = data->init_coords[i];
-		i++;
-	}
-	if (keycode == 53 || keycode == 65307)
-		close_window(data);
-	else if (keycode == 65361)
-		data->rot_angle_y -= 1.0;
-	else if (keycode == 65363)
-		data->rot_angle_y += 1.0;
-	else if (keycode == 65362)
-		data->rot_angle_x -= 1.0;
-	else if (keycode == 65364)
-		data->rot_angle_x += 1.0;
-	render(data, &data->img);
-	return (0);
+	fdf = (t_fdf *)param;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_R))
+		refresh_map(fdf->map);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_ESCAPE))
+		mlx_close_window(fdf->mlx);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_LEFT))
+		fdf->map->center_x += 7;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_RIGHT))
+		fdf->map->center_x -= 7;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_UP))
+		fdf->map->center_y += 7;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_DOWN))
+		fdf->map->center_y -= 7;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_EQUAL))
+		hook_scroll(0, 1, param);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_MINUS))
+		hook_scroll(0, -1, param);
 }
 
-int	handle_x(t_data *data)
+void	hook_rotate(void *param)
 {
-	close_window(data);
-	return (0);
+	t_fdf	*fdf;
+	double	sign;
+
+	fdf = (t_fdf *)param;
+	sign = 0;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_COMMA))
+		sign = -1;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_PERIOD))
+		sign = 1;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_S))
+		fdf->map->height_scale += sign * 0.02;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_Z))
+		fdf->map->rotation_z += sign * 0.02;
+}
+
+static void	set_view_parameters(t_fdf *fdf, int view)
+{
+	fdf->map->rotation_z = 0;
+	fdf->map->height_scale = 1;
+	if (view == 1)
+	{
+		fdf->map->iso_angle_x = 0;
+		fdf->map->iso_angle_y = -M_PI / 2;
+		fdf->map->height_scale = 0;
+	}
+	else if (view == 2)
+	{
+		fdf->map->iso_angle_x = 0;
+		fdf->map->iso_angle_y = 0;
+	}
+	else if (view == 3)
+	{
+		fdf->map->iso_angle_x = M_PI / 2;
+		fdf->map->iso_angle_y = 0;
+	}
+	else if (view == 4)
+	{
+		fdf->map->iso_angle_x = 0.46373398 / 2;
+		fdf->map->iso_angle_y = 0.46373398;
+	}
+}
+
+void	hook_project(void *param)
+{
+	t_fdf	*fdf;
+
+	fdf = (t_fdf *)param;
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_1))
+		set_view_parameters(fdf, 1);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_2))
+		set_view_parameters(fdf, 2);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_3))
+		set_view_parameters(fdf, 3);
+	if (mlx_is_key_down(fdf->mlx, MLX_KEY_4))
+		set_view_parameters(fdf, 4);
 }

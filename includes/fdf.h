@@ -6,126 +6,138 @@
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/10/28 21:20:22 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/04 17:52:28 by taebkim          ###   ########.fr       */
+/*   Updated: 2024/11/06 19:56:11 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef FDF_H
 # define FDF_H
 
-# define WIN_WIDTH 900
-# define WIN_HEIGHT 600
-
-# define COLOR_WHITE 0xFADADD
-# define COLOR_BLACK 0x000000
-# define COLOR_RED 0xFF0000
-
-# define M_PI 3.14159265358979323846
-
-# define FLT_MAX 3.402823466e+38F
-# define FLT_MIN -3.402823466e+38F
-
+# include "MLX42.h"
+# include "get_next_line.h"
+# include "libft.h"
+# include <errno.h>
 # include <fcntl.h>
-# include <get_next_line.h>
-# include <libft.h>
+# include <limits.h>
 # include <math.h>
-# include <mlx.h>
+# include <stdio.h>
 # include <stdlib.h>
-# include <unistd.h>
+# include <string.h>
 
-typedef struct s_img
+# define WIDTH 3840
+# define HEIGHT 2160
+# define TEXT_CLR 0xf3f6f4FF
+# define BACKGROUND 0x0E2F4400
+# define MENU_BG_CLR 0x1E1E1EFF
+# define CLR_LV_1 0xFF00CCFF
+# define CLR_LV_2 0xFF00FFFF
+# define CLR_LV_3 0x9900FFFF
+# define CLR_LV_4 0x6E0DD0F
+# define CLR_LV_5 0xCC00FFFF
+# define CLR_LV_6 0x9D00FFFF
+# define CLR_LV_7 0xF0033FFF
+# define CLR_LV_8 0x0062FFFF
+# define CLR_LV_9 0x099FFFFF
+# define CLR_LV_10 0x00FFFFFF
+
+# define USAGE_FORMAT "Format:\n\t./fdf maps/filename.fdf"
+# define MALLOC_ERR "Malloc failed"
+# define MAP_ERR "Map is invalid"
+# define FILE_OPEN_ERR "Unable to open file"
+
+typedef struct s_vertex
 {
-	void		*img_ptr;
-	char		*data;
-	int			bpp;
-	int			size_line;
-	int			endian;
-}				t_img;
+	double		x;
+	double		y;
+	double		z;
+	int			mapcolor;
+	int			zcolor;
+}				t_vertex;
 
-typedef struct s_point
+typedef struct s_pixel
 {
-	int			xp0;
-	int			yp0;
-	int			xp1;
-	int			yp1;
-}				t_point;
+	int			x;
+	int			y;
+	int			z;
+	int			rgba;
+}				t_pixel;
 
-typedef struct s_bres
+typedef struct s_coord
 {
-	int			dx;
-	int			dy;
-	int			sx;
-	int			sy;
-	int			err;
-	int			e2;
-}				t_bres;
+	double		x;
+	double		y;
+	double		z;
+}				t_coord;
 
-typedef struct s_coords
+typedef struct s_map
 {
-	float		x;
-	float		y;
-	float		z;
-	int			color;
-}				t_coords;
+	int			rows;
+	int			cols;
+	int			max_height;
+	int			min_height;
+	bool		use_height_color;
+	double		center_x;
+	double		center_y;
+	double		interval;
+	double		iso_angle_x;
+	double		iso_angle_y;
+	double		rotation_x;
+	double		rotation_y;
+	double		rotation_z;
+	double		zoom;
+	double		height_scale;
+	t_vertex	**original_points;
+	t_pixel		**projected_points;
+}				t_map;
 
-typedef struct s_data
+typedef struct s_fdf
 {
-	void		*mlx_ptr;
-	void		*win_ptr;
-	int			**map;
-	int			**colors;
-	int			map_width;
-	int			map_height;
-	float		**x_prj;
-	float		**y_prj;
-	float		x_prj_max;
-	float		y_prj_max;
-	float		x_prj_min;
-	float		y_prj_min;
-	int			offset_x;
-	int			offset_y;
-	float		scale;
-	float		rot_angle_x;
-	float		rot_angle_y;
-	float		rot_angle_z;
-	t_img		img;
-	t_coords	*coords;
-	t_coords	*init_coords;
-	t_bres		bres;
-	t_point		point;
-}				t_data;
+	mlx_t		*mlx;
+	t_map		*map;
+	mlx_image_t	*image;
+}				t_fdf;
 
-int				ft_isspace(int c);
-int				hex_to_int(char c);
+/* fdf_main.c */
+void			map_init(t_map *map);
 
-void			error_msg(char *msg, t_data *data);
+/* fdf_parse.c */
+void			map_parse(int fd, t_map *map);
+void			map_size(int fd, t_map *map);
 
-int				key_hook(int keycode, t_data *data);
-int				handle_x(t_data *data);
+/* fdf_error.c */
+void			arr_free(void **ptr, size_t len);
+void			map_free(t_map *map);
+void			fail_safe(const char *message);
+void			map_error(int fd, t_map *map, char *message);
 
-void			get_map(t_data *data, const char *filename);
-void			parse_fdf_file(t_data *data, const char *file);
+/* fdf_draw.c */
+void			map_project(t_map *map, int i, int j);
+void			draw_image(void *param);
+void			menu(mlx_t *mlx);
 
-void			allocate_color_z(t_data *data);
-void			allocate_coords(t_data *data);
+/* fdf_hooks.c */
+void			hook_events(void *param);
+void			hook_scroll(double xscale, double yscale, void *param);
+void			hook_rotate(void *param);
+void			hook_project(void *param);
 
-void			free_z(t_data *data);
-void			free_color(t_data *data);
-void			free_mlx(t_data *data);
-void			free_data(t_data *data);
-void			copy_coords(t_data *data);
+/* fdf_utils.c*/
+void			to_upper(unsigned int i, char *c);
+void			image_reset(mlx_image_t *image);
+int				fname_valid(const char *filename);
+int				ft_min(int a, int b);
+int				ft_max(int a, int b);
+int				ft_atoi_base(const char *str, const char *base);
+void			refresh_map(t_map *map);
 
-int				render(t_data *data, t_img *img);
+/* fdf_color.c */
+int				get_clr(t_pixel current, t_pixel start, t_pixel end);
+void			apply_zclr(t_map *map);
 
-void			draw_horiz(t_data *data, t_point *point, t_bres *bres,
-					t_img *img);
-void			draw_vert(t_data *data, t_point *point, t_bres *bres,
-					t_img *img);
-void			img_pixel_put(t_img *img, int x, int y, int color);
-
-void			rotate_project_scale(t_data *data);
-
-void			calculate_scaling_and_offset(t_data *data);
-void			project(t_data *data);
+void			map_pov(t_map *map, t_pixel *new, t_coord coord);
+void			set_map_pov(t_map *map, t_vertex *previous, t_pixel *new,
+					t_coord coord);
+void			change_color(mlx_key_data_t keydata, void *param);
+void			rot_z_axis(double *x, double *y, double angle);
 
 #endif

@@ -5,83 +5,132 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: taebkim <taebkim@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/10/28 21:25:27 by taebkim           #+#    #+#             */
-/*   Updated: 2024/11/04 17:53:25 by taebkim          ###   ########.fr       */
+/*   Created: 2024/11/06 19:36:42 by taebkim           #+#    #+#             */
+/*   Updated: 2024/11/06 20:33:40 by taebkim          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-static void	init_data(t_data *data)
+static void	table_memalloc(t_map *map)
 {
-	data->map = NULL;
-	data->colors = NULL;
-	data->map_width = 0;
-	data->map_height = 0;
-	data->x_prj = NULL;
-	data->y_prj = NULL;
-	data->x_prj_max = FLT_MIN;
-	data->y_prj_max = FLT_MIN;
-	data->x_prj_min = FLT_MAX;
-	data->y_prj_min = FLT_MAX;
-	data->offset_x = 0;
-	data->offset_y = 0;
-	data->scale = 1;
-	data->rot_angle_x = 0.0;
-	data->rot_angle_y = 0.0;
-	data->rot_angle_z = 0;
+	int	i;
+
+	map->original_points = malloc(sizeof(t_vertex *) * map->rows);
+	map->projected_points = malloc(sizeof(t_pixel *) * map->rows);
+	if (!(map->projected_points) || !(map->original_points))
+	{
+		map_free(map);
+		fail_safe(MALLOC_ERR);
+	}
+	i = -1;
+	while (++i < map->rows)
+	{
+		map->original_points[i] = malloc(sizeof(t_vertex) * map->cols);
+		map->projected_points[i] = malloc(sizeof(t_pixel) * map->cols);
+		if (!(map->projected_points[i]) || !(map->original_points))
+		{
+			if (i + 1 < map->rows)
+			{
+				map->original_points[i + 1] = NULL;
+				map->projected_points[i + 1] = NULL;
+			}
+			map_free(map);
+			fail_safe(MALLOC_ERR);
+		}
+	}
 }
 
-static void	file_load(int ac, char **av)
+void	map_init(t_map *map)
+{
+	map->iso_angle_x = 0.46373398 / 2;
+	map->iso_angle_y = 0.46373398;
+	map->rotation_x = 0;
+	map->rotation_x = 0;
+	map->rotation_z = 0;
+	map->center_x = WIDTH / 2;
+	map->center_y = HEIGHT / 2;
+	map->zoom = 1;
+	map->height_scale = 1;
+	map->use_height_color = false;
+	map->max_height = INT_MIN;
+	map->min_height = INT_MAX;
+	map->rows = 0;
+	map->cols = 0;
+	map->projected_points = NULL;
+	map->original_points = NULL;
+}
+
+static t_map	*input_parse(char *filename)
 {
 	int		fd;
-	char	*ext;
+	t_map	*map;
 
-	if (ac != 2)
-		error_msg("usage: ./fdf <filename>\n", NULL);
-	fd = open(av[1], O_RDONLY);
-	if (fd < 0)
-		error_msg("error: open() failed\n", NULL);
+	fd = open(filename, O_RDONLY);
+	if (fd == -1)
+		fail_safe(FILE_OPEN_ERR);
+	map = malloc(sizeof(t_map));
+	if (!map)
+	{
+		close(fd);
+		fail_safe(MALLOC_ERR);
+	}
+	map_init(map);
+	map_size(fd, map);
 	close(fd);
-	ext = ft_strrchr(av[1], '.');
-	if (!ext || ft_strncmp(ext, ".fdf", 4))
-		error_msg("error: invalid file extension\n", NULL);
+	table_memalloc(map);
+	map->interval = ft_min(WIDTH / map->cols, HEIGHT / map->rows) / 4;
+	map->interval = ft_max(2, map->interval);
+	fd = open(filename, O_RDONLY);
+	map_parse(fd, map);
+	close(fd);
+	apply_zclr(map);
+	return (map);
 }
 
-void	init_mlx(t_data *data)
+static t_fdf	*fdf_init(char *filename)
 {
-	data->mlx_ptr = mlx_init();
-	if (!data->mlx_ptr)
-		error_msg("error: mlx_init() failed\n", data);
-	data->win_ptr = mlx_new_window(data->mlx_ptr, WIN_WIDTH, WIN_HEIGHT, "fdf");
-	if (!data->win_ptr)
-		error_msg("error: mlx_new_window() failed\n", data);
-	data->img.img_ptr = mlx_new_image(data->mlx_ptr, WIN_WIDTH, WIN_HEIGHT);
-	if (!data->img.img_ptr)
-		error_msg("error: mlx_new_image() failed\n", data);
-	data->img.data = mlx_get_data_addr(data->img.img_ptr, &data->img.bpp,
-			&data->img.size_line, &data->img.endian);
-	if (!data->img.data)
-		error_msg("error: mlx_get_data_addr() failed\n", data);
+	static t_fdf	fdf;
+
+	fdf.map = input_parse(filename);
+	fdf.mlx = mlx_init(WIDTH, HEIGHT, "fdf", true);
+	if (!fdf.mlx)
+	{
+		map_free(fdf.map);
+		fail_safe(mlx_strerror(mlx_errno));
+	}
+	fdf.image = mlx_new_image(fdf.mlx, WIDTH, HEIGHT);
+	if (!fdf.image)
+	{
+		map_free(fdf.map);
+		mlx_close_window(fdf.mlx);
+		fail_safe(mlx_strerror(mlx_errno));
+	}
+	return (&fdf);
 }
 
 int	main(int argc, char **argv)
 {
-	t_data	data;
+	t_fdf	*fdf;
 
-	init_data(&data);
-	file_load(argc, argv);
-	init_mlx(&data);
-	get_map(&data, argv[1]);
-	allocate_color_z(&data);
-	parse_fdf_file(&data, argv[1]);
-	allocate_coords(&data);
-	copy_coords(&data);
-	render(&data, &data.img);
-	mlx_key_hook(data.win_ptr, key_hook, &data);
-	mlx_hook(data.win_ptr, 17, 0, handle_x, &data);
-	mlx_loop(data.mlx_ptr);
-	free_data(&data);
-	exit(EXIT_SUCCESS);
+	if (argc != 2 || !fname_valid(argv[1]))
+		fail_safe(USAGE_FORMAT);
+	fdf = fdf_init(argv[1]);
+	draw_image(fdf);
+	if (mlx_image_to_window(fdf->mlx, fdf->image, 0, 0) == -1)
+	{
+		map_free(fdf->map);
+		mlx_close_window(fdf->mlx);
+		fail_safe(mlx_strerror(mlx_errno));
+	}
+	mlx_key_hook(fdf->mlx, &change_color, fdf);
+	mlx_loop_hook(fdf->mlx, &hook_events, fdf);
+	mlx_loop_hook(fdf->mlx, &hook_rotate, fdf);
+	mlx_loop_hook(fdf->mlx, &hook_project, fdf);
+	mlx_scroll_hook(fdf->mlx, &hook_scroll, fdf);
+	mlx_loop_hook(fdf->mlx, &draw_image, fdf);
+	mlx_loop(fdf->mlx);
+	mlx_terminate(fdf->mlx);
+	map_free(fdf->map);
 	return (0);
 }
